@@ -116,4 +116,6 @@ include("Vector.jl")
 
 include("Resolution.jl")
 
+include("libsingular/Meta.jl")
+
 end # module

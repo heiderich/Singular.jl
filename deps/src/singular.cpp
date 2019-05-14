@@ -4,6 +4,7 @@
 #include "rings.h"
 #include "ideals.h"
 #include "matrices.h"
+#include "caller.h"
 
 static std::string singular_return;
 static std::string singular_error;
@@ -73,6 +74,7 @@ JLCXX_MODULE define_julia_module(jlcxx::Module & Singular)
     singular_define_rings(Singular);
     singular_define_ideals(Singular);
     singular_define_matrices(Singular);
+    singular_define_caller(Singular);
 
 
     // Calls the Singular interpreter with `input`.
