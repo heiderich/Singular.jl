@@ -3,6 +3,7 @@
 #include <Singular/tok.h>
 #include <Singular/grammar.h>
 #include <Singular/ipshell.h>
+#include <Singular/lists.h>
 
 // #include <julia/julia.h>
 
@@ -14,7 +15,8 @@ static jl_value_t * get_type_mapper()
         std::pair<int, std::string>(POLY_CMD, "POLY_CMD"),
         std::pair<int, std::string>(IDEAL_CMD, "IDEAL_CMD"),
         std::pair<int, std::string>(INT_CMD, "INT_CMD"),
-        std::pair<int, std::string>(STRING_CMD, "STRING_CMD")};
+        std::pair<int, std::string>(STRING_CMD, "STRING_CMD"),
+        std::pair<int, std::string>(LIST_CMD, "LIST_CMD")};
 
     jl_array_t * return_array =
         jl_alloc_array_1d(jl_array_any_type, types.size());
@@ -146,6 +148,20 @@ jl_value_t * call_singular_library_procedure_wo_ring(
     return call_singular_library_procedure(name, NULL, arguments);
 }
 
+jl_value_t * convert_nested_list(void* l_void){
+    lists l = reinterpret_cast<lists>(l_void);
+    int len = lSize(l) + 1;
+    jl_array_t* result_array = jl_alloc_array_1d(jl_array_any_type,len);
+    for(int i = 0; i < len; i++){
+        leftv current = &(l->m[i]);
+        if(current->Typ() == LIST_CMD){
+            jl_arrayset(result_array,convert_nested_list(reinterpret_cast<void*>(current->data)), i);
+        } else {
+            jl_arrayset(result_array,get_julia_type_from_sleftv(current), i);
+        }
+    }
+    return reinterpret_cast<jl_value_t*>(result_array);
+}
 
 void singular_define_caller(jlcxx::Module & Singular)
 {
@@ -181,4 +197,5 @@ void singular_define_caller(jlcxx::Module & Singular)
     Singular.method("STRING_CMD_CASTER", [](void * obj) {
         return std::string(reinterpret_cast<char *>(obj));
     });
+    Singular.method("LIST_CMD_TRAVERSAL",&convert_nested_list);
 }

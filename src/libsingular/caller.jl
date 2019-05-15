@@ -1,10 +1,24 @@
+
+function recursive_translate(x,R)
+    if length(x) > 0 && x[1] isa Bool
+        return convert_return_list(x,R)
+    else
+        return [ recursive_translate(i,R) for i in x]
+    end
+end
+
+# function LIST_CMD_CASTER(x)
+#     x_new = LIST_CMD_TRAVERSAL(x)
+# end
+
 casting_functions_pre = Dict(
     :NUMBER_CMD => (NUMBER_CMD_CASTER, false ),
     :RING_CMD   => (RING_CMD_CASTER,   false ),
     :POLY_CMD   => (POLY_CMD_CASTER,   true  ),
     :IDEAL_CMD  => (IDEAL_CMD_CASTER,  true  ),
     :INT_CMD    => (INT_CMD_CASTER,    false ),
-    :STRING_CMD => (STRING_CMD_CASTER, false )
+    :STRING_CMD => (STRING_CMD_CASTER, false ),
+    :LIST_CMD   => (LIST_CMD_TRAVERSAL,   false ),
 )
 
 casting_functions = nothing
@@ -23,6 +37,9 @@ function convert_return_value(single_value,ring = nothing)
         error("recieved list instead of single value")
     end
     cast = casting_functions[single_value[3]][1](single_value[2])
+    if cast isa Array{Any}
+        return recursive_translate(cast,ring)
+    end
     if casting_functions[single_value[3]][2]
         cast = ring(cast)
     end
@@ -48,7 +65,15 @@ function get_ring(arg_list)
     for i in arg_list
         try
             ring = parent(i)
+            ring.ptr == true
         catch
+            ring = nothing
+        end
+        try
+            ring = parent(i).base_ring
+            ring.ptr == true
+        catch
+            ring = nothing
         end
     end
     return ring
