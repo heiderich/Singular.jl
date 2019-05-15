@@ -536,6 +536,10 @@ function Ideal(R::PolyRing{T}, id::libSingular.ideal) where T <: Nemo.RingElem
    return sideal{S}(R, id)
 end
 
+function (R::PolyRing{T})(id::libSingular.ideal) where T <: Nemo.RingElem
+    return Ideal(R,id)
+end
+
 # maximal ideal in degree d
 function MaximalIdeal(R::PolyRing{T}, d::Int) where T <: Nemo.RingElem
    (d > typemax(Cint) || d < 0) && throw(DomainError())
