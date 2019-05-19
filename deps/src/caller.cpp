@@ -4,8 +4,12 @@
 #include <Singular/grammar.h>
 #include <Singular/ipshell.h>
 #include <Singular/lists.h>
+#include <misc/intvec.h>
 
 // #include <julia/julia.h>
+
+static jl_value_t * jl_int64_vector_type;
+static jl_value_t * jl_int64_matrix_type;
 
 static jl_value_t * get_type_mapper()
 {
@@ -16,7 +20,8 @@ static jl_value_t * get_type_mapper()
         std::pair<int, std::string>(IDEAL_CMD, "IDEAL_CMD"),
         std::pair<int, std::string>(INT_CMD, "INT_CMD"),
         std::pair<int, std::string>(STRING_CMD, "STRING_CMD"),
-        std::pair<int, std::string>(LIST_CMD, "LIST_CMD")};
+        std::pair<int, std::string>(LIST_CMD, "LIST_CMD"),
+        std::pair<int, std::string>(INTVEC_CMD, "INTVEC_CMD")};
 
     jl_array_t * return_array =
         jl_alloc_array_1d(jl_array_any_type, types.size());
@@ -34,6 +39,14 @@ static jl_value_t * get_type_mapper()
     return reinterpret_cast<jl_value_t *>(return_array);
 }
 
+static void initialize_jl_c_types()
+{
+    jl_int64_vector_type =
+        jl_apply_array_type((jl_value_t *)jl_int64_type, 1);
+    jl_int64_matrix_type =
+        jl_apply_array_type((jl_value_t *)jl_int64_type, 2);
+}
+
 static inline void * get_ptr_from_cxxwrap_obj(jl_value_t * obj)
 {
     return *reinterpret_cast<void **>(obj);
@@ -43,6 +56,31 @@ static inline void * get_ptr_from_cxxwrap_obj(jl_value_t * obj)
 // void* get_ptr_from_cxxwrap_obj(jl_value_t* obj){
 //     return jl_unbox_voidpointer(jl_get_field(obj,"cpp_object"));
 // }
+
+jl_value_t * intvec_to_jl_array(intvec * v)
+{
+    int          size = v->length();
+    jl_array_t * result = jl_alloc_array_1d(jl_int64_vector_type, size);
+    int *        v_content = v->ivGetVec();
+    for (int i = 0; i < size; i++) {
+        jl_arrayset(result, jl_box_int64(static_cast<int64_t>(v_content[i])),
+                    i);
+    }
+    return reinterpret_cast<jl_value_t *>(result);
+}
+
+intvec * jl_array_to_intvec(jl_value_t * array_val)
+{
+    jl_array_t * array = reinterpret_cast<jl_array_t *>(array_val);
+    int          size = jl_array_len(array);
+    intvec *     result = new intvec(size);
+    int *        result_content = result->ivGetVec();
+    for (int i = 0; i < size; i++) {
+        result_content[i] =
+            static_cast<int>(jl_unbox_int64(jl_arrayref(array, i)));
+    }
+    return result;
+}
 
 bool translate_singular_type(
     jl_value_t * obj, void ** args, int * argtypes, int i, ring r)
@@ -76,6 +114,11 @@ bool translate_singular_type(
         argtypes[i] = MATRIX_CMD;
         args[i] = reinterpret_cast<void *>(mp_Copy(
             reinterpret_cast<matrix>(get_ptr_from_cxxwrap_obj(obj)), r));
+        return true;
+    }
+    if (jl_isa(obj, jl_int64_vector_type)) {
+        argtypes[i] = INTVEC_CMD;
+        args[i] = reinterpret_cast<void *>(jl_array_to_intvec(obj));
         return true;
     }
     if (jl_is_int64(obj)) {
@@ -148,19 +191,24 @@ jl_value_t * call_singular_library_procedure_wo_ring(
     return call_singular_library_procedure(name, NULL, arguments);
 }
 
-jl_value_t * convert_nested_list(void* l_void){
-    lists l = reinterpret_cast<lists>(l_void);
-    int len = lSize(l) + 1;
-    jl_array_t* result_array = jl_alloc_array_1d(jl_array_any_type,len);
-    for(int i = 0; i < len; i++){
+jl_value_t * convert_nested_list(void * l_void)
+{
+    lists        l = reinterpret_cast<lists>(l_void);
+    int          len = lSize(l) + 1;
+    jl_array_t * result_array = jl_alloc_array_1d(jl_array_any_type, len);
+    for (int i = 0; i < len; i++) {
         leftv current = &(l->m[i]);
-        if(current->Typ() == LIST_CMD){
-            jl_arrayset(result_array,convert_nested_list(reinterpret_cast<void*>(current->data)), i);
-        } else {
-            jl_arrayset(result_array,get_julia_type_from_sleftv(current), i);
+        if (current->Typ() == LIST_CMD) {
+            jl_arrayset(
+                result_array,
+                convert_nested_list(reinterpret_cast<void *>(current->data)),
+                i);
+        }
+        else {
+            jl_arrayset(result_array, get_julia_type_from_sleftv(current), i);
         }
     }
-    return reinterpret_cast<jl_value_t*>(result_array);
+    return reinterpret_cast<jl_value_t *>(result_array);
 }
 
 void singular_define_caller(jlcxx::Module & Singular)
@@ -181,6 +229,7 @@ void singular_define_caller(jlcxx::Module & Singular)
     Singular.method("call_singular_library_procedure",
                     &call_singular_library_procedure_wo_ring);
     Singular.method("get_type_mapper", &get_type_mapper);
+    Singular.method("initialize_jl_c_types", &initialize_jl_c_types);
 
 
     Singular.method("NUMBER_CMD_CASTER",
@@ -197,5 +246,8 @@ void singular_define_caller(jlcxx::Module & Singular)
     Singular.method("STRING_CMD_CASTER", [](void * obj) {
         return std::string(reinterpret_cast<char *>(obj));
     });
-    Singular.method("LIST_CMD_TRAVERSAL",&convert_nested_list);
+    Singular.method("INTVEC_CMD_CASTER", [](void * obj) {
+        return intvec_to_jl_array(reinterpret_cast<intvec *>(obj));
+    });
+    Singular.method("LIST_CMD_TRAVERSAL", &convert_nested_list);
 }
