@@ -18,7 +18,8 @@ casting_functions_pre = Dict(
     :IDEAL_CMD  => (IDEAL_CMD_CASTER,  true  ),
     :INT_CMD    => (INT_CMD_CASTER,    false ),
     :STRING_CMD => (STRING_CMD_CASTER, false ),
-    :LIST_CMD   => (LIST_CMD_TRAVERSAL,   false ),
+    :LIST_CMD   => (LIST_CMD_TRAVERSAL,false ),
+    :INTVEC_CMD => (INTVEC_CMD_CASTER, false ),
 )
 
 casting_functions = nothing
@@ -59,21 +60,22 @@ function prepare_argument(argument)
 end
 prepare_argument(x::T) where T <: AbstractString = x
 prepare_argument(x::Int64) = x
+prepare_argument(x::Array{Int64,1}) = x
+prepare_argument(x::Array{Int64,2}) = x
 
 function get_ring(arg_list)
     ring = nothing
     for i in arg_list
+        current_ptr = nothing
         try
-            ring = parent(i)
-            ring.ptr == true
+            current_ptr = i.ptr
         catch
-            ring = nothing
+            continue
         end
-        try
-            ring = parent(i).base_ring
-            ring.ptr == true
-        catch
-            ring = nothing
+        if current_ptr isa poly
+            return parent(i)
+        elseif current_ptr isa ideal
+            return parent(i).base_ring
         end
     end
     return ring
