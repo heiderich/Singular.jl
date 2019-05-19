@@ -20,6 +20,7 @@ casting_functions_pre = Dict(
     :STRING_CMD => (STRING_CMD_CASTER, false ),
     :LIST_CMD   => (LIST_CMD_TRAVERSAL,false ),
     :INTVEC_CMD => (INTVEC_CMD_CASTER, false ),
+    :INTMAT_CMD => (INTMAT_CMD_CASTER, false ),
 )
 
 casting_functions = nothing

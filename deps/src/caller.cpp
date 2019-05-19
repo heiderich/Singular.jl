@@ -21,6 +21,7 @@ static jl_value_t * get_type_mapper()
         std::pair<int, std::string>(INT_CMD, "INT_CMD"),
         std::pair<int, std::string>(STRING_CMD, "STRING_CMD"),
         std::pair<int, std::string>(LIST_CMD, "LIST_CMD"),
+        std::pair<int, std::string>(INTMAT_CMD, "INTMAT_CMD"),
         std::pair<int, std::string>(INTVEC_CMD, "INTVEC_CMD")};
 
     jl_array_t * return_array =
@@ -69,6 +70,20 @@ jl_value_t * intvec_to_jl_array(intvec * v)
     return reinterpret_cast<jl_value_t *>(result);
 }
 
+jl_value_t * intmat_to_jl_array(intvec * v)
+{
+    int rows = v->rows();
+    int cols = v->cols();
+    jl_array_t * result = jl_alloc_array_2d(jl_int64_matrix_type, rows, cols);
+    int64_t* result_ptr = reinterpret_cast<int64_t*>jl_array_data(result);
+    for (int i = 0; i < rows; i++) {
+        for( int j = 0; j < cols; j++){
+            result_ptr[ j + (i*cols) ] = IMATELEM(*v,i,j);
+        }
+    }
+    return reinterpret_cast<jl_value_t *>(result);
+}
+
 intvec * jl_array_to_intvec(jl_value_t * array_val)
 {
     jl_array_t * array = reinterpret_cast<jl_array_t *>(array_val);
@@ -78,6 +93,20 @@ intvec * jl_array_to_intvec(jl_value_t * array_val)
     for (int i = 0; i < size; i++) {
         result_content[i] =
             static_cast<int>(jl_unbox_int64(jl_arrayref(array, i)));
+    }
+    return result;
+}
+
+intvec* jl_array_to_intmat(jl_value_t* array_val){
+    jl_array_t * array = reinterpret_cast<jl_array_t *>(array_val);
+    int cols = jl_array_dim(array,0);
+    int rows = jl_array_dim(array,1);
+    intvec* result = new intvec(rows,cols);
+    int64_t* array_data = reinterpret_cast<int64_t*>(jl_array_data(array));
+    for(int i = 0; i < rows; i ++){
+        for( int j = 0; i < cols; i++){
+            IMATELEM(*result,i,j) = static_cast<int>(array_data[ j + (i*cols)]);
+        }
     }
     return result;
 }
@@ -119,6 +148,11 @@ bool translate_singular_type(
     if (jl_isa(obj, jl_int64_vector_type)) {
         argtypes[i] = INTVEC_CMD;
         args[i] = reinterpret_cast<void *>(jl_array_to_intvec(obj));
+        return true;
+    }
+    if (jl_isa(obj, jl_int64_matrix_type)) {
+        argtypes[i] = INTMAT_CMD;
+        args[i] = reinterpret_cast<void *>(jl_array_to_intmat(obj));
         return true;
     }
     if (jl_is_int64(obj)) {
@@ -248,6 +282,9 @@ void singular_define_caller(jlcxx::Module & Singular)
     });
     Singular.method("INTVEC_CMD_CASTER", [](void * obj) {
         return intvec_to_jl_array(reinterpret_cast<intvec *>(obj));
+    });
+    Singular.method("INTMAT_CMD_CASTER", [](void * obj) {
+        return intmat_to_jl_array(reinterpret_cast<intvec *>(obj));
     });
     Singular.method("LIST_CMD_TRAVERSAL", &convert_nested_list);
 }
