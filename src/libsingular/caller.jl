@@ -12,15 +12,17 @@ end
 # end
 
 casting_functions_pre = Dict(
-    :NUMBER_CMD => (NUMBER_CMD_CASTER, false ),
-    :RING_CMD   => (RING_CMD_CASTER,   false ),
-    :POLY_CMD   => (POLY_CMD_CASTER,   true  ),
-    :IDEAL_CMD  => (IDEAL_CMD_CASTER,  true  ),
-    :INT_CMD    => (INT_CMD_CASTER,    false ),
-    :STRING_CMD => (STRING_CMD_CASTER, false ),
-    :LIST_CMD   => (LIST_CMD_TRAVERSAL,false ),
-    :INTVEC_CMD => (INTVEC_CMD_CASTER, false ),
-    :INTMAT_CMD => (INTMAT_CMD_CASTER, false ),
+    :NUMBER_CMD    => (NUMBER_CMD_CASTER,    true  ),
+    :RING_CMD      => (RING_CMD_CASTER,      false ),
+    :POLY_CMD      => (POLY_CMD_CASTER,      true  ),
+    :IDEAL_CMD     => (IDEAL_CMD_CASTER,     true  ),
+    :INT_CMD       => (INT_CMD_CASTER,       false ),
+    :STRING_CMD    => (STRING_CMD_CASTER,    false ),
+    :LIST_CMD      => (LIST_CMD_TRAVERSAL,   false ),
+    :INTVEC_CMD    => (INTVEC_CMD_CASTER,    false ),
+    :INTMAT_CMD    => (INTMAT_CMD_CASTER,    false ),
+    :BIGINT_CMD    => (BIGINT_CMD_CASTER,    false ),
+    :BIGINTMAT_CMD => (BIGINTMAT_CMD_CASTER, false ),
 )
 
 casting_functions = nothing

@@ -11,7 +11,7 @@ function __init__()
    global mapping_types, casting_functions
    mapping_types = get_type_mapper()
    casting_functions = create_casting_functions()
-   initialize_jl_c_types()
+   initialize_jl_c_types(@__MODULE__)
 end
 
 include("libsingular/LibSingularTypes.jl")

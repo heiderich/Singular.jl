@@ -49,6 +49,7 @@ JLCXX_MODULE define_julia_module(jlcxx::Module & Singular)
     Singular.add_type<ip_smatrix>("ip_smatrix");
     Singular.add_type<ssyStrategy>("syStrategy");
     Singular.add_type<sip_smap>("sip_smap");
+    Singular.add_type<bigintmat>("bigintmat");
 
     /* monomial orderings */
     Singular.set_const("ringorder_no", ringorder_no);

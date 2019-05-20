@@ -10,10 +10,18 @@
 
 static jl_value_t * jl_int64_vector_type;
 static jl_value_t * jl_int64_matrix_type;
+static jl_value_t * jl_singular_number_type;
+static jl_value_t * jl_singular_poly_type;
+static jl_value_t * jl_singular_ring_type;
+static jl_value_t * jl_singular_ideal_type;
+static jl_value_t * jl_singular_matrix_type;
+static jl_value_t * jl_singular_bigint_type;
+static jl_value_t * jl_singular_bigintmat_type;
 
 static jl_value_t * get_type_mapper()
 {
     std::vector<std::pair<int, std::string>> types = {
+        std::pair<int, std::string>(BIGINT_CMD, "BIGINT_CMD"),
         std::pair<int, std::string>(NUMBER_CMD, "NUMBER_CMD"),
         std::pair<int, std::string>(RING_CMD, "RING_CMD"),
         std::pair<int, std::string>(POLY_CMD, "POLY_CMD"),
@@ -22,6 +30,7 @@ static jl_value_t * get_type_mapper()
         std::pair<int, std::string>(STRING_CMD, "STRING_CMD"),
         std::pair<int, std::string>(LIST_CMD, "LIST_CMD"),
         std::pair<int, std::string>(INTMAT_CMD, "INTMAT_CMD"),
+        std::pair<int, std::string>(BIGINTMAT_CMD, "BIGINTMAT_CMD"),
         std::pair<int, std::string>(INTVEC_CMD, "INTVEC_CMD")};
 
     jl_array_t * return_array =
@@ -40,12 +49,20 @@ static jl_value_t * get_type_mapper()
     return reinterpret_cast<jl_value_t *>(return_array);
 }
 
-static void initialize_jl_c_types()
+static void initialize_jl_c_types(jl_value_t* module_value)
 {
+    jl_module_t* module = reinterpret_cast<jl_module_t*>(module_value);
     jl_int64_vector_type =
         jl_apply_array_type((jl_value_t *)jl_int64_type, 1);
     jl_int64_matrix_type =
         jl_apply_array_type((jl_value_t *)jl_int64_type, 2);
+    jl_singular_number_type = jl_get_global(module,jl_symbol("number"));
+    jl_singular_poly_type = jl_get_global(module,jl_symbol("poly"));
+    jl_singular_ring_type = jl_get_global(module,jl_symbol("ring"));
+    jl_singular_ideal_type = jl_get_global(module,jl_symbol("ideal"));
+    jl_singular_matrix_type = jl_get_global(module,jl_symbol("ip_smatrix"));
+    jl_singular_bigint_type = jl_get_global(module,jl_symbol("__mpz_struct"));
+    jl_singular_bigintmat_type = jl_get_global(module,jl_symbol("bigintmat"));
 }
 
 static inline void * get_ptr_from_cxxwrap_obj(jl_value_t * obj)
@@ -114,36 +131,40 @@ intvec* jl_array_to_intmat(jl_value_t* array_val){
 bool translate_singular_type(
     jl_value_t * obj, void ** args, int * argtypes, int i, ring r)
 {
-    if (jl_isa(obj, jl_eval_string("Singular.libSingular.number"))) {
+    if (jl_isa(obj, jl_singular_number_type)) {
         argtypes[i] = NUMBER_CMD;
         args[i] = reinterpret_cast<void *>(n_Copy(
             reinterpret_cast<number>(get_ptr_from_cxxwrap_obj(obj)), r->cf));
         return true;
     }
-    if (jl_isa(obj, jl_eval_string("Singular.libSingular.ring"))) {
+    if (jl_isa(obj, jl_singular_ring_type)) {
         argtypes[i] = RING_CMD;
         void * rng = get_ptr_from_cxxwrap_obj(obj);
         reinterpret_cast<ring>(rng)->ref++;
         args[i] = rng;
         return true;
     }
-    if (jl_isa(obj, jl_eval_string("Singular.libSingular.poly"))) {
+    if (jl_isa(obj, jl_singular_poly_type)) {
         argtypes[i] = POLY_CMD;
         args[i] = reinterpret_cast<void *>(
             p_Copy(reinterpret_cast<poly>(get_ptr_from_cxxwrap_obj(obj)), r));
         return true;
     }
-    if (jl_isa(obj, jl_eval_string("Singular.libSingular.ideal"))) {
+    if (jl_isa(obj, jl_singular_ideal_type)) {
         argtypes[i] = IDEAL_CMD;
         args[i] = reinterpret_cast<void *>(id_Copy(
             reinterpret_cast<ideal>(get_ptr_from_cxxwrap_obj(obj)), r));
         return true;
     }
-    if (jl_isa(obj, jl_eval_string("Singular.libSingular.ip_smatrix"))) {
+    if (jl_isa(obj, jl_singular_matrix_type)) {
         argtypes[i] = MATRIX_CMD;
         args[i] = reinterpret_cast<void *>(mp_Copy(
             reinterpret_cast<matrix>(get_ptr_from_cxxwrap_obj(obj)), r));
         return true;
+    }
+    if (jl_isa(obj, jl_singular_bigint_type)){
+        argtypes[i] = BIGINT_CMD;
+        args[i] = reinterpret_cast<void*>(get_ptr_from_cxxwrap_obj(obj));
     }
     if (jl_isa(obj, jl_int64_vector_type)) {
         argtypes[i] = INTVEC_CMD;
@@ -153,6 +174,12 @@ bool translate_singular_type(
     if (jl_isa(obj, jl_int64_matrix_type)) {
         argtypes[i] = INTMAT_CMD;
         args[i] = reinterpret_cast<void *>(jl_array_to_intmat(obj));
+        return true;
+    }
+    if (jl_isa(obj, jl_singular_bigintmat_type)) {
+        argtypes[i] = BIGINTMAT_CMD;
+        bigintmat * copy = new bigintmat(reinterpret_cast<bigintmat*>(get_ptr_from_cxxwrap_obj(obj)));
+        args[i] = reinterpret_cast<void*>(copy);
         return true;
     }
     if (jl_is_int64(obj)) {
@@ -285,6 +312,12 @@ void singular_define_caller(jlcxx::Module & Singular)
     });
     Singular.method("INTMAT_CMD_CASTER", [](void * obj) {
         return intmat_to_jl_array(reinterpret_cast<intvec *>(obj));
+    });
+    Singular.method( "BIGINT_CMD_CASTER", [](void* obj) {
+        return reinterpret_cast<__mpz_struct*>(obj);
+    });
+    Singular.method( "BIGINTMAT_CMD_CASTER", [](void* obj){
+        return reinterpret_cast<bigintmat*>(obj);
     });
     Singular.method("LIST_CMD_TRAVERSAL", &convert_nested_list);
 }
