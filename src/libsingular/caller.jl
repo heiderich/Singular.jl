@@ -23,6 +23,7 @@ casting_functions_pre = Dict(
     :INTMAT_CMD    => (INTMAT_CMD_CASTER,    false ),
     :BIGINT_CMD    => (BIGINT_CMD_CASTER,    false ),
     :BIGINTMAT_CMD => (BIGINTMAT_CMD_CASTER, false ),
+    :MAP_CMD       => (MAP_CMD_CASTER,       false ),
 )
 
 casting_functions = nothing
