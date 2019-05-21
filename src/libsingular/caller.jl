@@ -31,8 +31,7 @@ casting_functions = nothing
 function create_casting_functions()
     pair_array = Any[]
     for (sym,func) in casting_functions_pre
-        pos = findfirst(i->(i[2] == sym),mapping_types)
-        push!(pair_array, mapping_types[pos][1] => func)
+        push!(pair_array, mapping_types_reversed[sym] => func)
     end
     return Dict(pair_array...)
 end
@@ -59,14 +58,6 @@ function convert_return_list(list_value, ring = nothing)
     return convert_return_value(list_value,ring)
 end
 
-function prepare_argument(argument)
-    return argument.ptr
-end
-prepare_argument(x::T) where T <: AbstractString = x
-prepare_argument(x::Int64) = x
-prepare_argument(x::Array{Int64,1}) = x
-prepare_argument(x::Array{Int64,2}) = x
-
 function get_ring(arg_list)
     ring = nothing
     for i in arg_list
@@ -85,16 +76,75 @@ function get_ring(arg_list)
     return ring
 end
 
+function prepare_argument(x::Singular.Nemo.RingElem)
+    ptr = x.ptr
+    rng = parent(x)
+    new_ptr = n_Copy(ptr,rng.ptr)
+    return Any[ mapping_types_reversed[:NUMBER_CMD], new_ptr.cpp_object ], nothing
+end
+
+function prepare_argument(x::Array{Int64,1})
+    return Any[ mapping_types_reversed[:INTVEC_CMD] jl_array_to_intvec(x) ], nothing
+end
+
+function prepare_argument(x::Array{Int64,2})
+    return Any[ mapping_types_reversed[:INTMAT_CMD] jl_array_to_intmat(x) ], nothing
+end
+
+function prepare_argument(x::Int64)
+    return Any[ mapping_types_reversed[:INT_CMD], Ptr{Cvoid}(x) ], nothing
+end
+
+function prepare_argument(x::String)
+    return Any[ mapping_types_reversed[:STRING_CMD], safe_singular_string(x) ], nothing
+end
+
+function prepare_argument(x::Any)
+    if x.ptr isa ring
+        new_ptr = get_ring_ref(x)
+        return Any[ mapping_types_reversed[:RING_CMD], new_ptr.cpp_object ], x
+    elseif x.ptr isa poly
+        rng = parent(x)
+        return get_poly_ptr(x.ptr,rng.ptr), rng
+    elseif x.ptr isa ideal
+        rng = parent(x).base_ring
+        return get_ideal_ptr(x.ptr,rng.ptr), rng
+    elseif x.ptr isa ip_smatrix
+        rng = parent(x)
+        return Any[ mapping_types_reversed[:MATRIX_CMD], mpCopy(x.ptr,rng.ptr).cpp_object ], rng
+    elseif x.ptr isa __mpz_struct
+        return Any[ mapping_types_reversed[:BIGINT_CMD], x.ptr.cpp_object ], nothing
+    elseif x.ptr isa sip_smap
+        return Any[ mapping_types_reversed[:MAP_CMD], x.ptr.cpp_object ], nothing
+    elseif x.ptr isa bigintmat
+        return Any[ mapping_types_reversed[:BIGINTMAT_CMD], x.ptr.cpp_object ], nothing
+    end
+
+end
+
+function low_level_caller_rng(lib::String,name::String,ring,args...)
+    load_library(lib)
+    arguments = [prepare_argument(i) for i in args]
+    arguments = Any[ i for (i,j) in arguments ]
+    return_value = call_singular_library_procedure(name,ring.ptr,arguments)
+    return convert_return_list(return_value,ring)
+end
 
 function low_level_caller(lib::String,name::String,args...)
     load_library(lib)
-    arguments = Any[prepare_argument(i) for i in args]
-    ring = get_ring(args)
+    arguments = [prepare_argument(i) for i in args]
+    rng = nothing
+    for (i,j) in arguments
+        if j != nothing
+            rng = j
+        end
+    end
+    arguments = Any[ i for (i,j) in arguments ]
     return_values = nothing
-    if ring == nothing
+    if rng == nothing
         return_value = call_singular_library_procedure(name,arguments)
     else
-        return_value = call_singular_library_procedure(name,ring.ptr,arguments)
+        return_value = call_singular_library_procedure(name,rng.ptr,arguments)
     end
-    return convert_return_list(return_value,ring)
+    return convert_return_list(return_value,rng)
 end
