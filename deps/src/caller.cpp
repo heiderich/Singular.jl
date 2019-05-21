@@ -19,6 +19,7 @@ static jl_value_t * jl_singular_bigint_type;
 static jl_value_t * jl_singular_bigintmat_type;
 static jl_value_t * jl_singular_map_type;
 static jl_value_t * jl_singular_resolution_type;
+static jl_value_t * jl_singular_vector_type;
 
 static jl_value_t * get_type_mapper()
 {
@@ -35,6 +36,8 @@ static jl_value_t * get_type_mapper()
         std::pair<int, std::string>(BIGINTMAT_CMD, "BIGINTMAT_CMD"),
         std::pair<int, std::string>(MAP_CMD, "MAP_CMD"),
         std::pair<int, std::string>(RESOLUTION_CMD, "RESOLUTION_CMD"),
+        std::pair<int, std::string>(MODUL_CMD, "MODUL_CMD"),
+        std::pair<int, std::string>(VECTOR_CMD, "VECTOR_CMD"),
         std::pair<int, std::string>(INTVEC_CMD, "INTVEC_CMD")};
 
     jl_array_t * return_array =
@@ -53,22 +56,25 @@ static jl_value_t * get_type_mapper()
     return reinterpret_cast<jl_value_t *>(return_array);
 }
 
-static void initialize_jl_c_types(jl_value_t* module_value)
+static void initialize_jl_c_types(jl_value_t * module_value)
 {
-    jl_module_t* module = reinterpret_cast<jl_module_t*>(module_value);
+    jl_module_t * module = reinterpret_cast<jl_module_t *>(module_value);
     jl_int64_vector_type =
         jl_apply_array_type((jl_value_t *)jl_int64_type, 1);
     jl_int64_matrix_type =
         jl_apply_array_type((jl_value_t *)jl_int64_type, 2);
-    jl_singular_number_type = jl_get_global(module,jl_symbol("number"));
-    jl_singular_poly_type = jl_get_global(module,jl_symbol("poly"));
-    jl_singular_ring_type = jl_get_global(module,jl_symbol("ring"));
-    jl_singular_ideal_type = jl_get_global(module,jl_symbol("ideal"));
-    jl_singular_matrix_type = jl_get_global(module,jl_symbol("ip_smatrix"));
-    jl_singular_bigint_type = jl_get_global(module,jl_symbol("__mpz_struct"));
-    jl_singular_bigintmat_type = jl_get_global(module,jl_symbol("bigintmat"));
-    jl_singular_bigintmat_type = jl_get_global(module,jl_symbol("sip_smap"));
-    jl_singular_resolution_type = jl_get_global(module,jl_symbol("resolvente"));
+    jl_singular_number_type = jl_get_global(module, jl_symbol("number"));
+    jl_singular_poly_type = jl_get_global(module, jl_symbol("poly"));
+    jl_singular_ring_type = jl_get_global(module, jl_symbol("ring"));
+    jl_singular_ideal_type = jl_get_global(module, jl_symbol("ideal"));
+    jl_singular_matrix_type = jl_get_global(module, jl_symbol("ip_smatrix"));
+    jl_singular_bigint_type =
+        jl_get_global(module, jl_symbol("__mpz_struct"));
+    jl_singular_bigintmat_type =
+        jl_get_global(module, jl_symbol("bigintmat"));
+    jl_singular_map_type = jl_get_global(module, jl_symbol("sip_smap"));
+    jl_singular_resolution_type =
+        jl_get_global(module, jl_symbol("resolvente"));
 }
 
 static inline void * get_ptr_from_cxxwrap_obj(jl_value_t * obj)
@@ -95,19 +101,19 @@ jl_value_t * intvec_to_jl_array(intvec * v)
 
 jl_value_t * intmat_to_jl_array(intvec * v)
 {
-    int rows = v->rows();
-    int cols = v->cols();
+    int          rows = v->rows();
+    int          cols = v->cols();
     jl_array_t * result = jl_alloc_array_2d(jl_int64_matrix_type, rows, cols);
-    int64_t* result_ptr = reinterpret_cast<int64_t*>jl_array_data(result);
+    int64_t * result_ptr = reinterpret_cast<int64_t *> jl_array_data(result);
     for (int i = 0; i < rows; i++) {
-        for( int j = 0; j < cols; j++){
-            result_ptr[ j + (i*cols) ] = IMATELEM(*v,i,j);
+        for (int j = 0; j < cols; j++) {
+            result_ptr[j + (i * cols)] = IMATELEM(*v, i, j);
         }
     }
     return reinterpret_cast<jl_value_t *>(result);
 }
 
-intvec * jl_array_to_intvec(jl_value_t * array_val)
+void * jl_array_to_intvec(jl_value_t * array_val)
 {
     jl_array_t * array = reinterpret_cast<jl_array_t *>(array_val);
     int          size = jl_array_len(array);
@@ -117,97 +123,91 @@ intvec * jl_array_to_intvec(jl_value_t * array_val)
         result_content[i] =
             static_cast<int>(jl_unbox_int64(jl_arrayref(array, i)));
     }
-    return result;
+    return reinterpret_cast<void *>(result);
 }
 
-intvec* jl_array_to_intmat(jl_value_t* array_val){
+void * jl_array_to_intmat(jl_value_t * array_val)
+{
     jl_array_t * array = reinterpret_cast<jl_array_t *>(array_val);
-    int cols = jl_array_dim(array,0);
-    int rows = jl_array_dim(array,1);
-    intvec* result = new intvec(rows,cols);
-    int64_t* array_data = reinterpret_cast<int64_t*>(jl_array_data(array));
-    for(int i = 0; i < rows; i ++){
-        for( int j = 0; i < cols; i++){
-            IMATELEM(*result,i,j) = static_cast<int>(array_data[ j + (i*cols)]);
+    int          cols = jl_array_dim(array, 0);
+    int          rows = jl_array_dim(array, 1);
+    intvec *     result = new intvec(rows, cols);
+    int64_t * array_data = reinterpret_cast<int64_t *>(jl_array_data(array));
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; i < cols; i++) {
+            IMATELEM(*result, i, j) =
+                static_cast<int>(array_data[j + (i * cols)]);
         }
     }
-    return result;
+    return reinterpret_cast<void *>(result);
 }
 
-bool translate_singular_type(
-    jl_value_t * obj, void ** args, int * argtypes, int i, ring r)
+static bool check_vector(poly p, ring r)
 {
-    if (jl_isa(obj, jl_singular_number_type)) {
-        argtypes[i] = NUMBER_CMD;
-        args[i] = reinterpret_cast<void *>(n_Copy(
-            reinterpret_cast<number>(get_ptr_from_cxxwrap_obj(obj)), r->cf));
-        return true;
+    if (p == 0) {
+        return false;
     }
-    if (jl_isa(obj, jl_singular_ring_type)) {
-        argtypes[i] = RING_CMD;
-        void * rng = get_ptr_from_cxxwrap_obj(obj);
-        reinterpret_cast<ring>(rng)->ref++;
-        args[i] = rng;
-        return true;
+    return p_GetComp(p, r) != 0;
+}
+
+static void * get_ring_ref(ring r)
+{
+    r->ref++;
+    return reinterpret_cast<void *>(r);
+}
+
+static jl_value_t * get_poly_ptr(poly p, ring r)
+{
+    poly         p_copy = p_Copy(p, r);
+    jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 2);
+    jl_arrayset(result, jl_box_voidpointer(reinterpret_cast<void *>(p_copy)),
+                0);
+    if (check_vector(p_copy, r)) {
+        jl_arrayset(result, jl_box_int64(VECTOR_CMD), 1);
     }
-    if (jl_isa(obj, jl_singular_poly_type)) {
-        argtypes[i] = POLY_CMD;
-        args[i] = reinterpret_cast<void *>(
-            p_Copy(reinterpret_cast<poly>(get_ptr_from_cxxwrap_obj(obj)), r));
-        return true;
+    else {
+        jl_arrayset(result, jl_box_int64(POLY_CMD), 1);
     }
-    if (jl_isa(obj, jl_singular_ideal_type)) {
-        argtypes[i] = IDEAL_CMD;
-        args[i] = reinterpret_cast<void *>(id_Copy(
-            reinterpret_cast<ideal>(get_ptr_from_cxxwrap_obj(obj)), r));
-        return true;
+    return reinterpret_cast<jl_value_t *>(result);
+}
+
+static jl_value_t * get_ideal_ptr(ideal i, ring r)
+{
+    ideal        i_copy = id_Copy(i, r);
+    jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 2);
+    jl_arrayset(result, jl_box_voidpointer(reinterpret_cast<void *>(i_copy)),
+                0);
+    jl_arrayset(result, jl_box_int64(IDEAL_CMD), 1);
+    if (i_copy->rank != 1) {
+        jl_arrayset(result, jl_box_int64(MODUL_CMD), 1);
     }
-    if (jl_isa(obj, jl_singular_matrix_type)) {
-        argtypes[i] = MATRIX_CMD;
-        args[i] = reinterpret_cast<void *>(mp_Copy(
-            reinterpret_cast<matrix>(get_ptr_from_cxxwrap_obj(obj)), r));
-        return true;
+    else {
+        int nr_elems = IDELEMS(i_copy);
+        for (int i = 0; i < nr_elems; i++) {
+            if (check_vector(i_copy->m[i], r)) {
+                jl_arrayset(result, jl_box_int64(MODUL_CMD), 1);
+            }
+        }
     }
-    if (jl_isa(obj, jl_singular_bigint_type)){
-        argtypes[i] = BIGINT_CMD;
-        args[i] = reinterpret_cast<void*>(get_ptr_from_cxxwrap_obj(obj));
-    }
-    if (jl_isa(obj, jl_singular_map_type)){
-        argtypes[i] = MAP_CMD;
-        args[i] = reinterpret_cast<void*>(get_ptr_from_cxxwrap_obj(obj));
-    }
-    if (jl_isa(obj, jl_int64_vector_type)) {
-        argtypes[i] = INTVEC_CMD;
-        args[i] = reinterpret_cast<void *>(jl_array_to_intvec(obj));
-        return true;
-    }
-    if (jl_isa(obj, jl_int64_matrix_type)) {
-        argtypes[i] = INTMAT_CMD;
-        args[i] = reinterpret_cast<void *>(jl_array_to_intmat(obj));
-        return true;
-    }
-    if (jl_isa(obj, jl_singular_bigintmat_type)) {
-        argtypes[i] = BIGINTMAT_CMD;
-        bigintmat * copy = new bigintmat(reinterpret_cast<bigintmat*>(get_ptr_from_cxxwrap_obj(obj)));
-        args[i] = reinterpret_cast<void*>(copy);
-        return true;
-    }
-    if (jl_isa(obj,jl_singular_resolution_type)) {
-        argtypes[i] = RESOLUTION_CMD;
-        jl_value_t* real_obj = *reinterpret_cast<jl_value_t**>(obj);
-        args[i] = get_ptr_from_cxxwrap_obj(real_obj);
-    }
-    if (jl_is_int64(obj)) {
-        argtypes[i] = INT_CMD;
-        args[i] = reinterpret_cast<void *>(jl_unbox_int64(obj));
-        return true;
-    }
-    if (jl_is_string(obj)) {
-        argtypes[i] = STRING_CMD;
-        args[i] = reinterpret_cast<void*>(omStrDup(jl_string_data(obj)));
-        return true;
-    }
-    return false;
+    return reinterpret_cast<jl_value_t *>(result);
+}
+
+static void * safe_singular_string(std::string s)
+{
+    return reinterpret_cast<void *>(omStrDup(s.c_str()));
+}
+
+bool translate_singular_type(jl_value_t * obj,
+                             void **      args,
+                             int *        argtypes,
+                             int          i)
+{
+    jl_array_t * array = reinterpret_cast<jl_array_t *>(obj);
+    int    cmd = static_cast<int>(jl_unbox_int64(jl_arrayref(array, 0)));
+    void * arg = jl_unbox_voidpointer(jl_arrayref(array, 1));
+    args[i] = arg;
+    argtypes[i] = cmd;
+    return true;
 }
 
 jl_value_t * get_julia_type_from_sleftv(leftv ret)
@@ -216,6 +216,31 @@ jl_value_t * get_julia_type_from_sleftv(leftv ret)
     jl_arrayset(result, jl_false, 0);
     jl_arrayset(result, jl_box_voidpointer(ret->data), 1);
     jl_arrayset(result, jl_box_int64(ret->Typ()), 2);
+    return reinterpret_cast<jl_value_t *>(result);
+}
+
+jl_value_t * get_ring_content(ring r)
+{
+    // count elements
+    idhdl h = r->idroot;
+    int   nr = 0;
+    while (h != NULL) {
+        nr++;
+        h = IDNEXT(h);
+    }
+    jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, nr);
+    h = r->idroot;
+    nr = 0;
+    while (h != NULL) {
+        jl_array_t * current = jl_alloc_array_1d(jl_array_any_type, 3);
+        jl_arrayset(current, jl_box_int64(IDTYP(h)), 0);
+        jl_arrayset(current,
+                    reinterpret_cast<jl_value_t *>(jl_symbol(IDID(h))), 1);
+        jl_arrayset(current, jl_box_voidpointer(IDDATA(h)), 2);
+        jl_arrayset(result, reinterpret_cast<jl_value_t *>(current), nr);
+        h = IDNEXT(h);
+        nr++;
+    }
     return reinterpret_cast<jl_value_t *>(result);
 }
 
@@ -228,7 +253,7 @@ jl_value_t * call_singular_library_procedure(
     argtypes[len] = 0;
     for (int i = 0; i < len; i++) {
         bool result =
-            translate_singular_type(arguments[i], args, argtypes, i, r);
+            translate_singular_type(arguments[i], args, argtypes, i);
         if (!result) {
             jl_error("Could not convert argument");
         }
@@ -327,14 +352,21 @@ void singular_define_caller(jlcxx::Module & Singular)
     Singular.method("INTMAT_CMD_CASTER", [](void * obj) {
         return intmat_to_jl_array(reinterpret_cast<intvec *>(obj));
     });
-    Singular.method( "BIGINT_CMD_CASTER", [](void* obj) {
-        return reinterpret_cast<__mpz_struct*>(obj);
+    Singular.method("BIGINT_CMD_CASTER", [](void * obj) {
+        return reinterpret_cast<__mpz_struct *>(obj);
     });
-    Singular.method( "BIGINTMAT_CMD_CASTER", [](void* obj){
-        return reinterpret_cast<bigintmat*>(obj);
+    Singular.method("BIGINTMAT_CMD_CASTER", [](void * obj) {
+        return reinterpret_cast<bigintmat *>(obj);
     });
-    Singular.method( "MAP_CMD_CASTER", [](void* obj){
-        return reinterpret_cast<sip_smap*>(obj);
+    Singular.method("MAP_CMD_CASTER", [](void * obj) {
+        return reinterpret_cast<sip_smap *>(obj);
     });
     Singular.method("LIST_CMD_TRAVERSAL", &convert_nested_list);
+    Singular.method("get_ring_content", &get_ring_content);
+    Singular.method("get_ring_ref", &get_ring_ref);
+    Singular.method("get_poly_ptr", &get_poly_ptr);
+    Singular.method("get_ideal_ptr", &get_ideal_ptr);
+    Singular.method("jl_array_to_intvec", &jl_array_to_intvec);
+    Singular.method("jl_array_to_intmat", &jl_array_to_intmat);
+    Singular.method("safe_singular_string", &safe_singular_string);
 }
