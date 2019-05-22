@@ -76,19 +76,12 @@ function get_ring(arg_list)
     return ring
 end
 
-function prepare_argument(x::Singular.Nemo.RingElem)
-    ptr = x.ptr
-    rng = parent(x)
-    new_ptr = n_Copy(ptr,rng.ptr)
-    return Any[ mapping_types_reversed[:NUMBER_CMD], new_ptr.cpp_object ], nothing
-end
-
 function prepare_argument(x::Array{Int64,1})
-    return Any[ mapping_types_reversed[:INTVEC_CMD] jl_array_to_intvec(x) ], nothing
+    return Any[ mapping_types_reversed[:INTVEC_CMD], jl_array_to_intvec(x) ], nothing
 end
 
 function prepare_argument(x::Array{Int64,2})
-    return Any[ mapping_types_reversed[:INTMAT_CMD] jl_array_to_intmat(x) ], nothing
+    return Any[ mapping_types_reversed[:INTMAT_CMD], jl_array_to_intmat(x) ], nothing
 end
 
 function prepare_argument(x::Int64)
@@ -100,7 +93,12 @@ function prepare_argument(x::String)
 end
 
 function prepare_argument(x::Any)
-    if x.ptr isa ring
+    if x.ptr isa number
+        ptr = x.ptr
+        rng = parent(x)
+        new_ptr = n_Copy(ptr,rng.ptr)
+        return Any[ mapping_types_reversed[:NUMBER_CMD], new_ptr.cpp_object ], nothing
+    elseif x.ptr isa ring
         new_ptr = get_ring_ref(x)
         return Any[ mapping_types_reversed[:RING_CMD], new_ptr.cpp_object ], x
     elseif x.ptr isa poly
