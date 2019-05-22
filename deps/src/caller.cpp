@@ -117,7 +117,7 @@ void * jl_array_to_intvec(jl_value_t * array_val)
 {
     jl_array_t * array = reinterpret_cast<jl_array_t *>(array_val);
     int          size = jl_array_len(array);
-    intvec *     result = new intvec(size);
+    intvec *     result = new intvec(size, 0);
     int *        result_content = result->ivGetVec();
     for (int i = 0; i < size; i++) {
         result_content[i] =
@@ -129,14 +129,15 @@ void * jl_array_to_intvec(jl_value_t * array_val)
 void * jl_array_to_intmat(jl_value_t * array_val)
 {
     jl_array_t * array = reinterpret_cast<jl_array_t *>(array_val);
-    int          cols = jl_array_dim(array, 0);
-    int          rows = jl_array_dim(array, 1);
-    intvec *     result = new intvec(rows, cols);
+    int          rows = jl_array_dim(array, 0);
+    int          cols = jl_array_dim(array, 1);
+    intvec *     result = new intvec(rows, cols, 0);
     int64_t * array_data = reinterpret_cast<int64_t *>(jl_array_data(array));
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; i < cols; i++) {
-            IMATELEM(*result, i, j) =
-                static_cast<int>(array_data[j + (i * cols)]);
+    int *     vec_data = result->ivGetVec();
+    for (int i = 0; i < cols; i++) {
+        for (int j = 0; j < rows; j++) {
+            IMATELEM(*result,i-1,j-1) = 
+                static_cast<int>(array_data[j + (i * rows)]);
         }
     }
     return reinterpret_cast<void *>(result);
@@ -161,12 +162,12 @@ static jl_value_t * get_poly_ptr(poly p, ring r)
     poly         p_copy = p_Copy(p, r);
     jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 2);
     jl_arrayset(result, jl_box_voidpointer(reinterpret_cast<void *>(p_copy)),
-                0);
+                1);
     if (check_vector(p_copy, r)) {
-        jl_arrayset(result, jl_box_int64(VECTOR_CMD), 1);
+        jl_arrayset(result, jl_box_int64(VECTOR_CMD), 0);
     }
     else {
-        jl_arrayset(result, jl_box_int64(POLY_CMD), 1);
+        jl_arrayset(result, jl_box_int64(POLY_CMD), 0);
     }
     return reinterpret_cast<jl_value_t *>(result);
 }
@@ -176,10 +177,10 @@ static jl_value_t * get_ideal_ptr(ideal i, ring r)
     ideal        i_copy = id_Copy(i, r);
     jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 2);
     jl_arrayset(result, jl_box_voidpointer(reinterpret_cast<void *>(i_copy)),
-                0);
-    jl_arrayset(result, jl_box_int64(IDEAL_CMD), 1);
+                1);
+    jl_arrayset(result, jl_box_int64(IDEAL_CMD), 0);
     if (i_copy->rank != 1) {
-        jl_arrayset(result, jl_box_int64(MODUL_CMD), 1);
+        jl_arrayset(result, jl_box_int64(MODUL_CMD), 0);
     }
     else {
         int nr_elems = IDELEMS(i_copy);
