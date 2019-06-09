@@ -88,6 +88,10 @@ mutable struct smodule{T <: Nemo.RingElem} <: Module{T}
    end
 end
 
+function (R::PolyRing{T})(m::libSingular.ideal,::Val{:module}) where T
+    return smodule{T}(R,m)
+end
+
 function _smodule_clear_fn(I::smodule)
    R = I.base_ring
    libSingular.id_Delete(I.ptr, R.ptr)

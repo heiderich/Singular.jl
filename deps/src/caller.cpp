@@ -117,7 +117,7 @@ void * jl_array_to_intvec(jl_value_t * array_val)
 {
     jl_array_t * array = reinterpret_cast<jl_array_t *>(array_val);
     int          size = jl_array_len(array);
-    intvec *     result = new intvec(size, 0);
+    intvec *     result = new intvec(size);
     int *        result_content = result->ivGetVec();
     for (int i = 0; i < size; i++) {
         result_content[i] =
@@ -136,7 +136,7 @@ void * jl_array_to_intmat(jl_value_t * array_val)
     int *     vec_data = result->ivGetVec();
     for (int i = 0; i < cols; i++) {
         for (int j = 0; j < rows; j++) {
-            IMATELEM(*result,i-1,j-1) = 
+            IMATELEM(*result, i - 1, j - 1) =
                 static_cast<int>(array_data[j + (i * rows)]);
         }
     }
