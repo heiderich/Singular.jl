@@ -16,7 +16,8 @@ casting_functions_pre = Dict(
     :RING_CMD      => (RING_CMD_CASTER,      false , ()),
     :POLY_CMD      => (POLY_CMD_CASTER,      true  , ()),
     :IDEAL_CMD     => (IDEAL_CMD_CASTER,     true  , ()),
-    :MODUL_CMD     => (IDEAL_CMD_CASTER,     true  , (Val(:module),) ),
+    :MODUL_CMD     => (IDEAL_CMD_CASTER,     true  , (:module,) ),
+    :VECTOR_CMD    => (POLY_CMD_CASTER,      true  , (:vector,) ),
     :INT_CMD       => (INT_CMD_CASTER,       false , ()),
     :STRING_CMD    => (STRING_CMD_CASTER,    false , ()),
     :LIST_CMD      => (LIST_CMD_TRAVERSAL,   false , ()),
@@ -37,16 +38,21 @@ function create_casting_functions()
     return Dict(pair_array...)
 end
 
-function convert_return_value(single_value,ring = nothing)
+function convert_return_value(single_value,rng = nothing)
     if single_value[1]
         error("recieved list instead of single value")
     end
     cast = casting_functions[single_value[3]][1](single_value[2])
     if cast isa Array{Any}
-        return recursive_translate(cast,ring)
-    end
-    if casting_functions[single_value[3]][2]
-        cast = ring(cast,casting_functions[single_value[3]][3]...)
+        return recursive_translate(cast,rng)
+    elseif cast isa ring
+        return [ cast, get_ring_content(cast) ]
+    elseif casting_functions[single_value[3]][2]
+        if length(casting_functions[single_value[3]][3]) > 0
+            cast = rng(cast,Val(casting_functions[single_value[3]][3][1]))
+        else
+            cast = rng(cast)
+        end
     end
     return cast
 end
@@ -104,7 +110,14 @@ function prepare_argument(x::Any)
         return Any[ mapping_types_reversed[:RING_CMD], new_ptr.cpp_object ], x
     elseif x.ptr isa poly
         rng = parent(x)
-        return get_poly_ptr(x.ptr,rng.ptr), rng
+        rng_ptr = nothing
+        try #poly_case
+            rng_ptr = rng.ptr
+        catch #module_case
+            rng_ptr = rng.base_ring.ptr
+            rng = rng.base_ring
+        end
+        return get_poly_ptr(x.ptr,rng_ptr), rng
     elseif x.ptr isa ideal
         rng = parent(x).base_ring
         return get_ideal_ptr(x.ptr,rng.ptr), rng

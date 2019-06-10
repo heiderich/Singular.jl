@@ -32,6 +32,10 @@ mutable struct svector{T <: Nemo.RingElem} <: Nemo.ModuleElem{T}
    end
 end
 
+function (R::PolyRing{T})(m::libSingular.poly,::Val{:vector}) where T
+    return svector{T}(R,1,m)
+end
+
 function _svector_clear_fn(p::svector)
    R = p.base_ring
    libSingular.p_Delete(p.ptr, R.ptr)
