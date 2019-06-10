@@ -63,6 +63,14 @@ mutable struct PolyRing{T <: Nemo.RingElem} <: Nemo.MPolyRing{T}
    end
 end
 
+function (R::PolyRing{T})(r::libSingular.ring) where T
+    new_r = PolyRing{T}(base_ring(R),[:dummy],:dp,false)
+    new_ptr = new_r.ptr
+    new_r.ptr = r
+    libSingular.rDelete(new_ptr)
+    return new_r
+end
+
 function _PolyRing_clear_fn(R::PolyRing)
    R.refcount -= 1
    if R.refcount == 0
