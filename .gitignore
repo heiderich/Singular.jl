@@ -5,4 +5,4 @@ docs/build
 *.jl.*.cov
 *.jl.mem
 .gitattributes
-/src/libsingular/libraryfuncdictionary.jl
+/src/libraryfuncdictionary.jl

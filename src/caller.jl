@@ -12,20 +12,21 @@ end
 # end
 
 casting_functions_pre = Dict(
-    :NUMBER_CMD    => (NUMBER_CMD_CASTER,    true  , ()),
-    :RING_CMD      => (RING_CMD_CASTER,      false , ()),
-    :POLY_CMD      => (POLY_CMD_CASTER,      true  , ()),
-    :IDEAL_CMD     => (IDEAL_CMD_CASTER,     true  , ()),
-    :MODUL_CMD     => (IDEAL_CMD_CASTER,     true  , (:module,) ),
-    :VECTOR_CMD    => (POLY_CMD_CASTER,      true  , (:vector,) ),
-    :INT_CMD       => (INT_CMD_CASTER,       false , ()),
-    :STRING_CMD    => (STRING_CMD_CASTER,    false , ()),
-    :LIST_CMD      => (LIST_CMD_TRAVERSAL,   false , ()),
-    :INTVEC_CMD    => (INTVEC_CMD_CASTER,    false , ()),
-    :INTMAT_CMD    => (INTMAT_CMD_CASTER,    false , ()),
-    :BIGINT_CMD    => (BIGINT_CMD_CASTER,    false , ()),
-    :BIGINTMAT_CMD => (BIGINTMAT_CMD_CASTER, false , ()),
-    :MAP_CMD       => (MAP_CMD_CASTER,       false , ()),
+    :NUMBER_CMD     => (libSingular.NUMBER_CMD_CASTER,    true  , ()),
+    :RING_CMD       => (libSingular.RING_CMD_CASTER,      false , ()),
+    :POLY_CMD       => (libSingular.POLY_CMD_CASTER,      true  , ()),
+    :IDEAL_CMD      => (libSingular.IDEAL_CMD_CASTER,     true  , ()),
+    :MODUL_CMD      => (libSingular.IDEAL_CMD_CASTER,     true  , (:module,) ),
+    :VECTOR_CMD     => (libSingular.POLY_CMD_CASTER,      true  , (:vector,) ),
+    :INT_CMD        => (libSingular.INT_CMD_CASTER,       false , ()),
+    :STRING_CMD     => (libSingular.STRING_CMD_CASTER,    false , ()),
+    :LIST_CMD       => (libSingular.LIST_CMD_TRAVERSAL,   false , ()),
+    :INTVEC_CMD     => (libSingular.INTVEC_CMD_CASTER,    false , ()),
+    :INTMAT_CMD     => (libSingular.INTMAT_CMD_CASTER,    false , ()),
+    :BIGINT_CMD     => (libSingular.BIGINT_CMD_CASTER,    false , ()),
+    :BIGINTMAT_CMD  => (libSingular.BIGINTMAT_CMD_CASTER, false , ()),
+    :MAP_CMD        => (libSingular.MAP_CMD_CASTER,       false , ()),
+    :RESOLUTION_CMD => (identity,             true  , (:resolution,) )
 )
 
 casting_functions = nothing
@@ -53,9 +54,9 @@ function convert_return_value(single_value,rng = nothing)
     cast = casting_functions[single_value[3]][1](single_value[2])
     if cast isa Array{Any}
         return recursive_translate(cast,rng)
-    elseif cast isa ring
+    elseif cast isa libSingular.ring
         new_ring = rng(cast)
-        return [ new_ring, convert_ring_content(get_ring_content(cast),new_ring) ]
+        return [ new_ring, convert_ring_content(libSingular.get_ring_content(cast),new_ring) ]
     elseif casting_functions[single_value[3]][2]
         if length(casting_functions[single_value[3]][3]) > 0
             cast = rng(cast,Val(casting_functions[single_value[3]][3][1]))
@@ -93,11 +94,11 @@ function get_ring(arg_list)
 end
 
 function prepare_argument(x::Array{Int64,1})
-    return Any[ mapping_types_reversed[:INTVEC_CMD], jl_array_to_intvec(x) ], nothing
+    return Any[ mapping_types_reversed[:INTVEC_CMD], libSingular.jl_array_to_intvec(x) ], nothing
 end
 
 function prepare_argument(x::Array{Int64,2})
-    return Any[ mapping_types_reversed[:INTMAT_CMD], jl_array_to_intmat(x) ], nothing
+    return Any[ mapping_types_reversed[:INTMAT_CMD], libSingular.jl_array_to_intmat(x) ], nothing
 end
 
 function prepare_argument(x::Int64)
@@ -105,54 +106,68 @@ function prepare_argument(x::Int64)
 end
 
 function prepare_argument(x::String)
-    return Any[ mapping_types_reversed[:STRING_CMD], safe_singular_string(x) ], nothing
+    return Any[ mapping_types_reversed[:STRING_CMD], libSingular.safe_singular_string(x) ], nothing
 end
 
+function prepare_argument(x::PolyRing)
+    new_ptr = libSingular.get_ring_ref(x.ptr)
+    return Any[ mapping_types_reversed[:RING_CMD], new_ptr ], x
+end
+
+function prepare_argument(x::spoly)
+    rng = parent(x)
+    rng_ptr = rng.ptr
+    return Any[ mapping_types_reversed[:POLY_CMD], libSingular.get_poly_ptr(x.ptr,rng_ptr) ], rng
+end
+
+function prepare_argument(x::svector)
+    rng = parent(x).base_ring
+    rng_ptr = rng.ptr
+    return Any[ mapping_types_reversed[:VECTOR_CMD], libSingular.get_poly_ptr(x.ptr,rng_ptr) ], rng
+end
+
+function prepare_argument(x::sideal)
+    rng = parent(x).base_ring
+    rng_ptr = rng.ptr
+    return Any[ mapping_types_reversed[:IDEAL_CMD], libSingular.get_ideal_ptr(x.ptr,rng_ptr)], rng
+end
+
+function prepare_argument(x::smodule)
+    rng = parent(x).base_ring
+    rng_ptr = rng.ptr
+    return Any[ mapping_types_reversed[:MODUL_CMD], libSingular.get_ideal_ptr(x.ptr,rng_ptr)], rng
+end
+
+
 function prepare_argument(x::Any)
-    if x.ptr isa number
+    if x.ptr isa libSingular.number
         ptr = x.ptr
         rng = parent(x)
-        new_ptr = n_Copy(ptr,rng.ptr)
+        new_ptr = libSingular.n_Copy(ptr,rng.ptr)
         return Any[ mapping_types_reversed[:NUMBER_CMD], new_ptr.cpp_object ], nothing
-    elseif x.ptr isa ring
-        new_ptr = get_ring_ref(x.ptr)
-        return Any[ mapping_types_reversed[:RING_CMD], new_ptr ], x
-    elseif x.ptr isa poly
+    elseif x.ptr isa libSingular.ip_smatrix
         rng = parent(x)
-        rng_ptr = nothing
-        try #poly_case
-            rng_ptr = rng.ptr
-        catch #module_case
-            rng_ptr = rng.base_ring.ptr
-            rng = rng.base_ring
-        end
-        return get_poly_ptr(x.ptr,rng_ptr), rng
-    elseif x.ptr isa ideal
-        rng = parent(x).base_ring
-        return get_ideal_ptr(x.ptr,rng.ptr), rng
-    elseif x.ptr isa ip_smatrix
-        rng = parent(x)
-        return Any[ mapping_types_reversed[:MATRIX_CMD], mpCopy(x.ptr,rng.ptr).cpp_object ], rng
-    elseif x.ptr isa __mpz_struct
+        return Any[ mapping_types_reversed[:MATRIX_CMD], libSingular.mpCopy(x.ptr,rng.ptr).cpp_object ], rng
+    elseif x.ptr isa libSingular.__mpz_struct
         return Any[ mapping_types_reversed[:BIGINT_CMD], x.ptr.cpp_object ], nothing
-    elseif x.ptr isa sip_smap
+    elseif x.ptr isa libSingular.sip_smap
         return Any[ mapping_types_reversed[:MAP_CMD], x.ptr.cpp_object ], nothing
-    elseif x.ptr isa bigintmat
+    elseif x.ptr isa libSingular.bigintmat
         return Any[ mapping_types_reversed[:BIGINTMAT_CMD], x.ptr.cpp_object ], nothing
     end
 
 end
 
 function low_level_caller_rng(lib::String,name::String,ring,args...)
-    load_library(lib)
+    libSingular.load_library(lib)
     arguments = [prepare_argument(i) for i in args]
     arguments = Any[ i for (i,j) in arguments ]
-    return_value = call_singular_library_procedure(name,ring.ptr,arguments)
+    return_value = libSingular.call_singular_library_procedure(name,ring.ptr,arguments)
     return convert_return_list(return_value,ring)
 end
 
 function low_level_caller(lib::String,name::String,args...)
-    load_library(lib)
+    libSingular.load_library(lib)
     arguments = [prepare_argument(i) for i in args]
     rng = nothing
     for (i,j) in arguments
@@ -163,9 +178,9 @@ function low_level_caller(lib::String,name::String,args...)
     arguments = Any[ i for (i,j) in arguments ]
     return_values = nothing
     if rng == nothing
-        return_value = call_singular_library_procedure(name,arguments)
+        return_value = libSingular.call_singular_library_procedure(name,arguments)
     else
-        return_value = call_singular_library_procedure(name,rng.ptr,arguments)
+        return_value = libSingular.call_singular_library_procedure(name,rng.ptr,arguments)
     end
     return convert_return_list(return_value,rng)
 end

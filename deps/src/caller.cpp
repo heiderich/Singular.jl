@@ -160,37 +160,13 @@ static void * get_ring_ref(ring r)
 static jl_value_t * get_poly_ptr(poly p, ring r)
 {
     poly         p_copy = p_Copy(p, r);
-    jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 2);
-    jl_arrayset(result, jl_box_voidpointer(reinterpret_cast<void *>(p_copy)),
-                1);
-    if (check_vector(p_copy, r)) {
-        jl_arrayset(result, jl_box_int64(VECTOR_CMD), 0);
-    }
-    else {
-        jl_arrayset(result, jl_box_int64(POLY_CMD), 0);
-    }
-    return reinterpret_cast<jl_value_t *>(result);
+    return jl_box_voidpointer(reinterpret_cast<void*>(p_copy));
 }
 
 static jl_value_t * get_ideal_ptr(ideal i, ring r)
 {
     ideal        i_copy = id_Copy(i, r);
-    jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 2);
-    jl_arrayset(result, jl_box_voidpointer(reinterpret_cast<void *>(i_copy)),
-                1);
-    jl_arrayset(result, jl_box_int64(IDEAL_CMD), 0);
-    if (i_copy->rank != 1) {
-        jl_arrayset(result, jl_box_int64(MODUL_CMD), 0);
-    }
-    else {
-        int nr_elems = IDELEMS(i_copy);
-        for (int i = 0; i < nr_elems; i++) {
-            if (check_vector(i_copy->m[i], r)) {
-                jl_arrayset(result, jl_box_int64(MODUL_CMD), 1);
-            }
-        }
-    }
-    return reinterpret_cast<jl_value_t *>(result);
+    return jl_box_voidpointer(reinterpret_cast<void*>(i_copy));
 }
 
 static void * safe_singular_string(std::string s)
