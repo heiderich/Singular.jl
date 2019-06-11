@@ -115,8 +115,8 @@ function prepare_argument(x::Any)
         new_ptr = n_Copy(ptr,rng.ptr)
         return Any[ mapping_types_reversed[:NUMBER_CMD], new_ptr.cpp_object ], nothing
     elseif x.ptr isa ring
-        new_ptr = get_ring_ref(x)
-        return Any[ mapping_types_reversed[:RING_CMD], new_ptr.cpp_object ], x
+        new_ptr = get_ring_ref(x.ptr)
+        return Any[ mapping_types_reversed[:RING_CMD], new_ptr ], x
     elseif x.ptr isa poly
         rng = parent(x)
         rng_ptr = nothing
