@@ -25,7 +25,7 @@ end
 
 filenames = filter(x -> endswith(x,".lib"),readdir(library_dir))
 
-output_filename = abspath(joinpath(@__DIR__,"..","src","libsingular","libraryfuncdictionary.jl"))
+output_filename = abspath(joinpath(@__DIR__,"..","src","libraryfuncdictionary.jl"))
 
 open(output_filename,"w") do outputfile
     println(outputfile,"""

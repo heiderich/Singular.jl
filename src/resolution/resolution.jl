@@ -124,6 +124,10 @@ function (S::ResolutionSet{T})(ptr::Ptr{Nothing}, len::Int) where T <: AbstractA
    return sresolution{T}(R, len, ptr)
 end
 
+function (R::PolyRing{T})(ptr::Ptr{Nothing}, ::Val{:resolution}) where T <: AbstractAlgebra.RingElement
+    return sresolution{T}(R, 1, ptr)
+end
+
 ###############################################################################
 #
 #   Resolution constructors
