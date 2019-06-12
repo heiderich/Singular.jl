@@ -159,14 +159,14 @@ static void * get_ring_ref(ring r)
 
 static jl_value_t * get_poly_ptr(poly p, ring r)
 {
-    poly         p_copy = p_Copy(p, r);
-    return jl_box_voidpointer(reinterpret_cast<void*>(p_copy));
+    poly p_copy = p_Copy(p, r);
+    return jl_box_voidpointer(reinterpret_cast<void *>(p_copy));
 }
 
 static jl_value_t * get_ideal_ptr(ideal i, ring r)
 {
-    ideal        i_copy = id_Copy(i, r);
-    return jl_box_voidpointer(reinterpret_cast<void*>(i_copy));
+    ideal i_copy = id_Copy(i, r);
+    return jl_box_voidpointer(reinterpret_cast<void *>(i_copy));
 }
 
 static void * safe_singular_string(std::string s)
@@ -192,7 +192,9 @@ jl_value_t * get_julia_type_from_sleftv(leftv ret)
     jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 3);
     jl_arrayset(result, jl_false, 0);
     jl_arrayset(result, jl_box_voidpointer(ret->data), 1);
+    ret->data = 0;
     jl_arrayset(result, jl_box_int64(ret->Typ()), 2);
+    ret->rtyp = 0;
     return reinterpret_cast<jl_value_t *>(result);
 }
 
@@ -288,6 +290,32 @@ jl_value_t * convert_nested_list(void * l_void)
     return reinterpret_cast<jl_value_t *>(result_array);
 }
 
+int64_t get_length_of_resolution(void * res_void)
+{
+    syStrategy res = reinterpret_cast<syStrategy>(res_void);
+    return static_cast<int64_t>(sySize(res));
+}
+
+jl_value_t * get_resolution_data(void * res_void)
+{
+    syStrategy   res = reinterpret_cast<syStrategy>(res_void);
+    jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 2);
+    jl_value_t * is_minimal = jl_false;
+    resolvente   result_res;
+    result_res = res->res;
+    if (result_res == NULL) {
+        result_res = res->fullres;
+    }
+    if (result_res == NULL) {
+        result_res = res->minres;
+        is_minimal = jl_true;
+    }
+    jl_arrayset(result, is_minimal, 0);
+    jl_arrayset(result,
+                jl_box_voidpointer(reinterpret_cast<void *>(result_res)), 1);
+    return reinterpret_cast<jl_value_t *>(result);
+}
+
 void singular_define_caller(jlcxx::Module & Singular)
 {
     Singular.method("load_library", [](std::string name) {
@@ -346,4 +374,7 @@ void singular_define_caller(jlcxx::Module & Singular)
     Singular.method("jl_array_to_intvec", &jl_array_to_intvec);
     Singular.method("jl_array_to_intmat", &jl_array_to_intmat);
     Singular.method("safe_singular_string", &safe_singular_string);
+
+    Singular.method("get_length_of_resolution", &get_length_of_resolution);
+    Singular.method("get_resolution_data", &get_resolution_data);
 }
