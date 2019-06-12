@@ -12,21 +12,21 @@ end
 # end
 
 casting_functions_pre = Dict(
-    :NUMBER_CMD     => (libSingular.NUMBER_CMD_CASTER,    true  , ()),
-    :RING_CMD       => (libSingular.RING_CMD_CASTER,      false , ()),
-    :POLY_CMD       => (libSingular.POLY_CMD_CASTER,      true  , ()),
-    :IDEAL_CMD      => (libSingular.IDEAL_CMD_CASTER,     true  , ()),
-    :MODUL_CMD      => (libSingular.IDEAL_CMD_CASTER,     true  , (:module,) ),
-    :VECTOR_CMD     => (libSingular.POLY_CMD_CASTER,      true  , (:vector,) ),
-    :INT_CMD        => (libSingular.INT_CMD_CASTER,       false , ()),
-    :STRING_CMD     => (libSingular.STRING_CMD_CASTER,    false , ()),
-    :LIST_CMD       => (libSingular.LIST_CMD_TRAVERSAL,   false , ()),
-    :INTVEC_CMD     => (libSingular.INTVEC_CMD_CASTER,    false , ()),
-    :INTMAT_CMD     => (libSingular.INTMAT_CMD_CASTER,    false , ()),
-    :BIGINT_CMD     => (libSingular.BIGINT_CMD_CASTER,    false , ()),
-    :BIGINTMAT_CMD  => (libSingular.BIGINTMAT_CMD_CASTER, false , ()),
-    :MAP_CMD        => (libSingular.MAP_CMD_CASTER,       false , ()),
-    :RESOLUTION_CMD => (identity,             true  , (:resolution,) )
+    :NUMBER_CMD     => (libSingular.NUMBER_CMD_CASTER,     true  , ()),
+    :RING_CMD       => (libSingular.RING_CMD_CASTER,       false , ()),
+    :POLY_CMD       => (libSingular.POLY_CMD_CASTER,       true  , ()),
+    :IDEAL_CMD      => (libSingular.IDEAL_CMD_CASTER,      true  , ()),
+    :MODUL_CMD      => (libSingular.IDEAL_CMD_CASTER,      true  , (:module,) ),
+    :VECTOR_CMD     => (libSingular.POLY_CMD_CASTER,       true  , (:vector,) ),
+    :INT_CMD        => (libSingular.INT_CMD_CASTER,        false , ()),
+    :STRING_CMD     => (libSingular.STRING_CMD_CASTER,     false , ()),
+    :LIST_CMD       => (libSingular.LIST_CMD_TRAVERSAL,    false , ()),
+    :INTVEC_CMD     => (libSingular.INTVEC_CMD_CASTER,     false , ()),
+    :INTMAT_CMD     => (libSingular.INTMAT_CMD_CASTER,     false , ()),
+    :BIGINT_CMD     => (libSingular.BIGINT_CMD_CASTER,     false , ()),
+    :BIGINTMAT_CMD  => (libSingular.BIGINTMAT_CMD_CASTER,  false , ()),
+    :MAP_CMD        => (libSingular.MAP_CMD_CASTER,        false , ()),
+    :RESOLUTION_CMD => (libSingular.RESOLUTION_CMD_CASTER, true  , (:resolution,) )
 )
 
 casting_functions = nothing
@@ -138,6 +138,11 @@ function prepare_argument(x::smodule)
     return Any[ mapping_types_reversed[:MODUL_CMD], libSingular.get_ideal_ptr(x.ptr,rng_ptr)], rng
 end
 
+function prepare_argument(x::sresolution)
+    rng = base_ring(x)
+    res = Any[ mapping_types_reversed[:RESOLUTION_CMD], libSingular.create_syStrategy_data(x.ptr,rng.ptr) ]
+    return res,rng
+end
 
 function prepare_argument(x::Any)
     if x.ptr isa libSingular.number
