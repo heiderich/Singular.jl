@@ -293,7 +293,7 @@ jl_value_t * convert_nested_list(void * l_void)
 int64_t get_length_of_resolution(void * res_void)
 {
     syStrategy res = reinterpret_cast<syStrategy>(res_void);
-    return static_cast<int64_t>(sySize(res));
+    return static_cast<int64_t>(sySize(res) + 1);
 }
 
 jl_value_t * get_resolution_data(void * res_void)
@@ -302,10 +302,7 @@ jl_value_t * get_resolution_data(void * res_void)
     jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 2);
     jl_value_t * is_minimal = jl_false;
     resolvente   result_res;
-    result_res = res->res;
-    if (result_res == NULL) {
-        result_res = res->fullres;
-    }
+    result_res = res->fullres;
     if (result_res == NULL) {
         result_res = res->minres;
         is_minimal = jl_true;
@@ -314,6 +311,15 @@ jl_value_t * get_resolution_data(void * res_void)
     jl_arrayset(result,
                 jl_box_voidpointer(reinterpret_cast<void *>(result_res)), 1);
     return reinterpret_cast<jl_value_t *>(result);
+}
+
+void * create_syStrategy_data(syStrategy res, ring o)
+{
+    const ring origin = currRing;
+    rChangeCurrRing(o);
+    syStrategy temp = syCopy(res);
+    rChangeCurrRing(origin);
+    return reinterpret_cast<void *>(temp);
 }
 
 void singular_define_caller(jlcxx::Module & Singular)
@@ -366,6 +372,9 @@ void singular_define_caller(jlcxx::Module & Singular)
     Singular.method("MAP_CMD_CASTER", [](void * obj) {
         return reinterpret_cast<sip_smap *>(obj);
     });
+    Singular.method("RESOLUTION_CMD_CASTER", [](void * obj) {
+        return reinterpret_cast<syStrategy>(obj);
+    });
     Singular.method("LIST_CMD_TRAVERSAL", &convert_nested_list);
     Singular.method("get_ring_content", &get_ring_content);
     Singular.method("get_ring_ref", &get_ring_ref);
@@ -377,4 +386,5 @@ void singular_define_caller(jlcxx::Module & Singular)
 
     Singular.method("get_length_of_resolution", &get_length_of_resolution);
     Singular.method("get_resolution_data", &get_resolution_data);
+    Singular.method("create_syStrategy_data", &create_syStrategy_data);
 }
