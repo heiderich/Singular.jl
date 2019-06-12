@@ -102,7 +102,9 @@ function show(io::IO, r::sresolution)
    println(io, "Singular Resolution:")
    if r.len > 0
       ptr = libSingular.getindex(r.ptr, Cint(0))
-      print(io, "R^", libSingular.rank(ptr))
+      if ptr != C_NULL
+         print(io, "R^", libSingular.rank(ptr))
+      end
    end
    for i = 1:r.len - 1
       ptr = libSingular.getindex(r.ptr, Cint(i-1))
@@ -125,7 +127,8 @@ function (S::ResolutionSet{T})(ptr::Ptr{Nothing}, len::Int) where T <: AbstractA
 end
 
 function (R::PolyRing{T})(ptr::Ptr{Nothing}, ::Val{:resolution}) where T <: AbstractAlgebra.RingElement
-    return sresolution{T}(R, 1, ptr)
+    res_data = libSingular.get_resolution_data(ptr)
+    return sresolution{T}(R, libSingular.get_length_of_resolution(ptr), res_data[2], res_data[1])
 end
 
 ###############################################################################

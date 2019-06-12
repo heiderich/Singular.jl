@@ -4,7 +4,6 @@ function test_nemo_fmpq()
     R, (x, y) = PolynomialRing(Singular.QQ, ["x", "y"])
 
     # Input tests
-
     @test Singular.SETS.isEqualInt(1,1)       == 1
     @test Singular.SETS.isEqualInt(R,x,x)     == 1
     @test Singular.SETS.isEqualInt("aa","aa") == 1
