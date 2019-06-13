@@ -136,7 +136,7 @@ void * jl_array_to_intmat(jl_value_t * array_val)
     int *     vec_data = result->ivGetVec();
     for (int i = 0; i < cols; i++) {
         for (int j = 0; j < rows; j++) {
-            IMATELEM(*result, i - 1, j - 1) =
+            IMATELEM(*result, i + 1, j + 1) =
                 static_cast<int>(array_data[j + (i * rows)]);
         }
     }
@@ -387,4 +387,7 @@ void singular_define_caller(jlcxx::Module & Singular)
     Singular.method("get_length_of_resolution", &get_length_of_resolution);
     Singular.method("get_resolution_data", &get_resolution_data);
     Singular.method("create_syStrategy_data", &create_syStrategy_data);
+
+    Singular.method("get_number_copy",&get_number_copy);
+
 }
