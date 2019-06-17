@@ -388,6 +388,4 @@ void singular_define_caller(jlcxx::Module & Singular)
     Singular.method("get_resolution_data", &get_resolution_data);
     Singular.method("create_syStrategy_data", &create_syStrategy_data);
 
-    Singular.method("get_number_copy",&get_number_copy);
-
 }
