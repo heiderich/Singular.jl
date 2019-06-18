@@ -21,7 +21,7 @@ elem_type(::ResolutionSet{T}) where T <: AbstractAlgebra.RingElem = sresolution{
 parent_type(::Type{sresolution{T}}) where T <: AbstractAlgebra.RingElem = ResolutionSet{T}
 
 function checkbounds(r::sresolution, i::Int)
-   (i < 1 || i > libSingular.get_sySize(r.ptr) - 1) && throw(BoundsError(I, i))
+   (i < 1 || i > libSingular.get_sySize(r.ptr)) && throw(BoundsError(r, i))
 end
 
 function getindex(r::sresolution, i::Int)
@@ -125,7 +125,7 @@ end
 #
 ###############################################################################
 
-function (S::ResolutionSet{T})(ptr::libSingular.syStrategy, len::Int) where T <: AbstractAlgebra.RingElem
+function (S::ResolutionSet{T})(ptr::libSingular.syStrategy, len::Int = 0) where T <: AbstractAlgebra.RingElem
    R = base_ring(S)
    return sresolution{T}(R, ptr)
 end
