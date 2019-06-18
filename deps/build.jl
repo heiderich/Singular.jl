@@ -95,6 +95,7 @@ withenv("CPP_FLAGS"=>"-I$vdir/include", "LD_LIBRARY_PATH"=>"$vdir/lib:$nemodir/l
    cmd = split(
      """
      $srcs/configure
+     --with-libparse
      --prefix=$vdir
      --disable-static
      --enable-p-procs-static
@@ -147,4 +148,6 @@ print("Running cmake")
 
 run(`make VERBOSE=1`)
 run(`make install`)
+
+include("parselibs.jl")
 

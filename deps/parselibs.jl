@@ -14,13 +14,14 @@ function execute(cmd::Cmd)
 end
 
 parsepath = abspath(joinpath(@__DIR__,"..","etc","parse_libs.sh"))
+libparsepath = abspath(joinpath(@__DIR__,"..","local","bin","libparse"))
 
 library_dir = ""
 
 if haskey(ENV,"SINGULAR_LIBRARY_DIR")
     library_dir = ENV["SINGULAR_LIBRARY_DIR"]
 else
-    library_dir = abspath(joinpath(@__DIR__,"Singular_build","Singular","LIB"))
+    library_dir = abspath(joinpath(@__DIR__,"..","local","share","singular","LIB"))
 end
 
 filenames = filter(x -> endswith(x,".lib"),readdir(library_dir))
@@ -32,7 +33,7 @@ open(output_filename,"w") do outputfile
 libraryfunctiondictionary = Dict(""")
     for i in filenames
         full_path = joinpath(library_dir,i)
-        libs = execute(`$parsepath $full_path`)
+        libs = execute(`$parsepath $libparsepath $full_path`)
         println(outputfile,"""
         :$(i[1:end-4]) => [ 
         $(libs.stdout)],
