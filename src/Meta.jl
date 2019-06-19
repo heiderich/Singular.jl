@@ -13,7 +13,7 @@ output_manipulator_funcs = Dict(
 )
 
 for (name,funcs) in libraryfunctiondictionary
-    name_caps = Symbol(uppercase(string(name)))
+    name_caps = Symbol( "Lib" * uppercasefirst(string(name)))
     func_calls = Any[]
     name_string = string(name) * ".lib"
     for i in funcs

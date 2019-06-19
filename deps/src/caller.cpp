@@ -143,33 +143,25 @@ void * jl_array_to_intmat(jl_value_t * array_val)
     return reinterpret_cast<void *>(result);
 }
 
-static bool check_vector(poly p, ring r)
-{
-    if (p == 0) {
-        return false;
-    }
-    return p_GetComp(p, r) != 0;
-}
-
 static void * get_ring_ref(ring r)
 {
     r->ref++;
     return reinterpret_cast<void *>(r);
 }
 
-static jl_value_t * get_poly_ptr(poly p, ring r)
+static jl_value_t * copy_polyptr_to_void(poly p, ring r)
 {
     poly p_copy = p_Copy(p, r);
     return jl_box_voidpointer(reinterpret_cast<void *>(p_copy));
 }
 
-static jl_value_t * get_ideal_ptr(ideal i, ring r)
+static jl_value_t * copy_idealptr_to_void(ideal i, ring r)
 {
     ideal i_copy = id_Copy(i, r);
     return jl_box_voidpointer(reinterpret_cast<void *>(i_copy));
 }
 
-static void * safe_singular_string(std::string s)
+static void * copy_string_to_void(std::string s)
 {
     return reinterpret_cast<void *>(omStrDup(s.c_str()));
 }
@@ -290,29 +282,6 @@ jl_value_t * convert_nested_list(void * l_void)
     return reinterpret_cast<jl_value_t *>(result_array);
 }
 
-int64_t get_length_of_resolution(void * res_void)
-{
-    syStrategy res = reinterpret_cast<syStrategy>(res_void);
-    return static_cast<int64_t>(sySize(res) + 1);
-}
-
-jl_value_t * get_resolution_data(void * res_void)
-{
-    syStrategy   res = reinterpret_cast<syStrategy>(res_void);
-    jl_array_t * result = jl_alloc_array_1d(jl_array_any_type, 2);
-    jl_value_t * is_minimal = jl_false;
-    resolvente   result_res;
-    result_res = res->fullres;
-    if (result_res == NULL) {
-        result_res = res->minres;
-        is_minimal = jl_true;
-    }
-    jl_arrayset(result, is_minimal, 0);
-    jl_arrayset(result,
-                jl_box_voidpointer(reinterpret_cast<void *>(result_res)), 1);
-    return reinterpret_cast<jl_value_t *>(result);
-}
-
 void * create_syStrategy_data(syStrategy res, ring o)
 {
     const ring origin = currRing;
@@ -378,14 +347,12 @@ void singular_define_caller(jlcxx::Module & Singular)
     Singular.method("LIST_CMD_TRAVERSAL", &convert_nested_list);
     Singular.method("get_ring_content", &get_ring_content);
     Singular.method("get_ring_ref", &get_ring_ref);
-    Singular.method("get_poly_ptr", &get_poly_ptr);
-    Singular.method("get_ideal_ptr", &get_ideal_ptr);
+    Singular.method("copy_polyptr_to_void", &copy_polyptr_to_void);
+    Singular.method("copy_idealptr_to_void", &copy_idealptr_to_void);
     Singular.method("jl_array_to_intvec", &jl_array_to_intvec);
     Singular.method("jl_array_to_intmat", &jl_array_to_intmat);
-    Singular.method("safe_singular_string", &safe_singular_string);
+    Singular.method("copy_string_to_void", &copy_string_to_void);
 
-    Singular.method("get_length_of_resolution", &get_length_of_resolution);
-    Singular.method("get_resolution_data", &get_resolution_data);
     Singular.method("create_syStrategy_data", &create_syStrategy_data);
 
 }

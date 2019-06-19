@@ -60,9 +60,8 @@ JLCXX_MODULE define_julia_module(jlcxx::Module & Singular)
      ** from resolutions.jl
      ***************************/
 
-    Singular.method("res_Delete_helper", [](syStrategy ra, ring o) {
-        syKillComputation(ra,o);
-    });
+    Singular.method("res_Delete_helper",
+                    [](syStrategy ra, ring o) { syKillComputation(ra, o); });
 
     Singular.method("res_Copy", [](syStrategy ra, ring o) {
         const ring origin = currRing;
@@ -72,12 +71,13 @@ JLCXX_MODULE define_julia_module(jlcxx::Module & Singular)
         return temp;
     });
 
-    Singular.method("getindex_internal", [](syStrategy ra, int64_t k, bool minimal) {
-        if(minimal){
-            return ra->minres[k];
-        }
-        return (ideal)ra->fullres[k];
-    });
+    Singular.method("getindex_internal",
+                    [](syStrategy ra, int64_t k, bool minimal) {
+                        if (minimal) {
+                            return ra->minres[k];
+                        }
+                        return (ideal)ra->fullres[k];
+                    });
 
     Singular.method("syMinimize", [](syStrategy ra, ring o) {
         const ring origin = currRing;
@@ -88,27 +88,28 @@ JLCXX_MODULE define_julia_module(jlcxx::Module & Singular)
         return reinterpret_cast<void *>(temp);
     });
 
-    Singular.method("get_minimal_res", [](syStrategy ra){
-        return reinterpret_cast<void*>(ra->minres);
+    Singular.method("get_minimal_res", [](syStrategy ra) {
+        return reinterpret_cast<void *>(ra->minres);
     });
 
-    Singular.method("get_full_res", [](syStrategy ra){
-        return reinterpret_cast<void*>(ra->fullres);
+    Singular.method("get_full_res", [](syStrategy ra) {
+        return reinterpret_cast<void *>(ra->fullres);
     });
 
-    Singular.method("get_sySize", [](syStrategy ra){
+    Singular.method("get_sySize", [](syStrategy ra) {
         return static_cast<int64_t>(sySize(ra));
     });
 
-    Singular.method("create_SyStrategy", [](void* res_void, int64_t len, ring r ){
+    Singular.method("create_SyStrategy", [](void * res_void, int64_t len,
+                                            ring r) {
         resolvente res = reinterpret_cast<resolvente>(res_void);
-        syStrategy result=(syStrategy)omAlloc0(sizeof(ssyStrategy));
+        syStrategy result = (syStrategy)omAlloc0(sizeof(ssyStrategy));
         result->list_length = static_cast<short>(len);
         result->length = static_cast<int>(len);
-        resolvente res_cp = (resolvente)omAlloc0((len+1)*sizeof(ideal));
-        for(int i = 0; i <= len; i++){
-            if(res[i] != NULL){
-                res_cp[i] = id_Copy(res[i],r);
+        resolvente res_cp = (resolvente)omAlloc0((len + 1) * sizeof(ideal));
+        for (int i = 0; i <= len; i++) {
+            if (res[i] != NULL) {
+                res_cp[i] = id_Copy(res[i], r);
             }
         }
         result->fullres = res_cp;
@@ -120,7 +121,8 @@ JLCXX_MODULE define_julia_module(jlcxx::Module & Singular)
         const ring origin = currRing;
         rChangeCurrRing(o);
         int      dummy;
-        intvec * iv = syBetti(reinterpret_cast<resolvente>(ra), len, &dummy, NULL, FALSE, NULL);
+        intvec * iv = syBetti(reinterpret_cast<resolvente>(ra), len, &dummy,
+                              NULL, FALSE, NULL);
         rChangeCurrRing(origin);
         int  nrows = iv->rows();
         int  ncols = iv->cols();
