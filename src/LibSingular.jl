@@ -2,9 +2,6 @@ module libSingular
 
 import Libdl
 
-# We need the top-level eval for now
-import ..Singular
-
 using CxxWrap
 @wrapmodule(realpath(joinpath(@__DIR__, "..", "local", "lib", "libsingularwrap." * Libdl.dlext)))
 
