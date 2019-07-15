@@ -16,6 +16,7 @@ include("../test/matrix-test.jl")
 include("../test/resolution-test.jl")
 include("../test/module-test.jl")
 include("../test/call_interpreter-test.jl")
+include("../test/caller-test.jl")
 # include("../test/libsingular-test.jl")
 
 test_number()
@@ -27,3 +28,14 @@ test_module()
 test_call_interpreter()
 # test_libsingular()
 
+
+@testset "Singular" begin
+    test_caller()
+    test_number()
+    test_poly()
+    test_ideal()
+    test_matrix()
+    test_resolution()
+    test_module()
+    # test_libsingular()
+end
